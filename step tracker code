@@ -1,0 +1,83 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+const int heelFSR = 34;
+const int toeFSR = 35;
+
+const int threshold = 1000;
+
+float stepCount = 0;
+
+bool heelTriggered = false;
+bool toeTriggered = false;
+
+void updateDisplay()
+{
+  display.clearDisplay();
+  display.setTextSize(3);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(15,20);
+  display.print(stepCount,1);     
+  display.display();
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  Wire.begin(21,22);
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC,0x3C))
+  {
+    Serial.println("OLED not found");
+    while(true);
+  }
+
+  updateDisplay();
+}
+
+void loop()
+{
+  int heelValue = analogRead(heelFSR);
+  int toeValue  = analogRead(toeFSR);
+
+  bool heelPressed = heelValue > threshold;
+  bool toePressed  = toeValue > threshold;
+
+  // Heel pressed first
+  if(heelPressed && !heelTriggered && stepCount == (int)stepCount)
+  {
+    heelTriggered = true;
+    stepCount += 0.5;
+    updateDisplay();
+
+    Serial.print("Heel: ");
+    Serial.println(stepCount);
+  }
+
+  // Toe pressed second
+  if(heelTriggered && toePressed && !toeTriggered)
+  {
+    toeTriggered = true;
+    stepCount += 0.5;
+    updateDisplay();
+
+    Serial.print("Toe: ");
+    Serial.println(stepCount);
+  }
+
+  // Reset after foot leaves the ground
+  if(!heelPressed && !toePressed)
+  {
+    heelTriggered = false;
+    toeTriggered = false;
+  }
+
+  delay(20);
+}
